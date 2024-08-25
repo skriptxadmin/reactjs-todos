@@ -7,6 +7,9 @@ import TodoModal from './TodoModal';
 import ModalConfirm from './ModalConfirm';
 import { API } from '../environment';
 
+import { collection, getDocs, setDoc, addDoc, doc, deleteDoc } from "firebase/firestore";
+import {db} from '../firestore';
+
 function TodoList() {
 
   let [listItems, setListItems] = useState([]);
@@ -23,9 +26,18 @@ function TodoList() {
 
 
   async function fetchTodos(){
-    const res = await fetch(API);
-    const todos = await res.json();
-    setListItems(todos);
+    // const res = await fetch(API);  // Using db.json only for local
+    // const todos = await res.json();
+    // setListItems(todos);
+
+    // From firebase
+    await getDocs(collection(db, "todos"))
+        .then((querySnapshot)=>{               
+            const newData = querySnapshot.docs
+                .map((doc) => ({...doc.data(), id:doc.id }));
+                setListItems(newData);                
+            // console.log(todos, newData);
+        })
 
 
   }
@@ -54,32 +66,39 @@ function TodoList() {
   }
 
   async function createTodo(todo){
-    let id = -1;
-    listItems.forEach(item => {
-      if(item.id >= id){
-        id = item.id;
-      }
-    })
-    todo.id = id+1;
-    const res = await fetch(API,{
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(todo),
-    })
+    // let id = -1;   // using db.json in local
+    // listItems.forEach(item => {
+    //   if(item.id >= id){
+    //     id = item.id;
+    //   }
+    // })
+    // todo.id = id+1;
+    // const res = await fetch(API,{
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify(todo),
+    // })
+
+    delete todo.id;
+    await addDoc(collection(db, "todos"),todo); // firebase
+
     fetchTodos();
     setShowTodoModal(false);
   }
 
   async function updateTodo(todo){
-    const res = await fetch(API+todo.id,{
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(todo),
-    })
+    // const res = await fetch(API+todo.id,{ // local db.json
+    //   method: "PUT",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify(todo),
+    // })
+    const docRef = doc(collection(db, "todos"), todo.id) // firebase
+    delete todo.id;
+    await setDoc(docRef,todo);// firebase
     fetchTodos();
     setShowTodoModal(false);
   }
@@ -98,12 +117,14 @@ function TodoList() {
     setTodoSelectedForDelete(null);
       return;
     }
-    const res = await fetch(API+todoSelectedForDelete.id,{
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
+    // const res = await fetch(API+todoSelectedForDelete.id,{  // local db.json
+    //   method: "DELETE",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    // })
+    const docRef = doc(collection(db, "todos"), todoSelectedForDelete.id)
+    await deleteDoc(docRef);
     fetchTodos();
     setTodoSelectedForDelete(null);
   }
